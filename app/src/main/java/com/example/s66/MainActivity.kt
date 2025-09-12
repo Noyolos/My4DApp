@@ -268,7 +268,7 @@ fun parseAllGroupsWithValidation(input: String): ParseOutcome {
             if (currentPlaceDigits != null) flushGroupForValidationAndBuild()
             currentPlaceDigits = pd
         } else {
-            if (!clean.matches(Regex("^\\d{4,6}(-\\d+)?(-\\d+)?(-\\d+)?$"))) {
+            if (!clean.matches(Regex("^\\d{4,6}(-\\d*){0,3}$"))) {
                 errors += "第 ${idx + 1} 行号码/金额非法：$clean（号码须为 4–6 位数字；金额用 - 分隔）"
             } else {
                 currentLines += clean
@@ -488,11 +488,23 @@ fun mapToLetter(placeDigits: String): String {
     return placeDigits.mapNotNull { mapping[it] }.joinToString("")
 }
 
-fun detectType(line: String, defaultB: Int, defaultS: Int, defaultA1: Int, defaultFroze: Boolean): BetType? {
+fun detectType(
+    line: String,
+    defaultB: Int,
+    defaultS: Int,
+    defaultA1: Int,
+    defaultFroze: Boolean
+): BetType? {
     val parts = line.split("-")
-    val b = parts.getOrNull(1)?.takeIf { it.isNotBlank() }?.toIntOrNull()
-    val s = parts.getOrNull(2)?.takeIf { it.isNotBlank() }?.toIntOrNull()
-    val a1 = parts.getOrNull(3)?.takeIf { it.isNotBlank() }?.toIntOrNull()
+
+    // 空字符串当成 null，避免 "--" 导致解析失败
+    fun parseOrNull(s: String?): Int? =
+        if (s.isNullOrBlank()) null else s.toIntOrNull()
+
+    val b = parseOrNull(parts.getOrNull(1))
+    val s = parseOrNull(parts.getOrNull(2))
+    val a1 = parseOrNull(parts.getOrNull(3))
+
     val count = listOf(b, s, a1).count { it != null }
 
     return when {
@@ -502,6 +514,7 @@ fun detectType(line: String, defaultB: Int, defaultS: Int, defaultA1: Int, defau
         else -> BetType(b ?: 0, s ?: 0, a1 ?: 0, false, true)
     }
 }
+
 
 fun parsePlaceandNumberList(placeDigits: String, inputLine: List<String>): BetGroup {
     val betList = mutableListOf<Bet>()
